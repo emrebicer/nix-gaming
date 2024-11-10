@@ -32,7 +32,7 @@
           // extra))
         .${wine};
     in {
-      umu = inputs.umu.packages.${system}.umu;
+      inherit (inputs.umu.packages.${system}) umu;
       dxvk = pkgs.callPackage ./dxvk {inherit pins;};
       dxvk-w32 = pkgs.pkgsCross.mingw32.callPackage ./dxvk {inherit pins;};
       dxvk-w64 = pkgs.pkgsCross.mingwW64.callPackage ./dxvk {inherit pins;};
@@ -47,6 +47,8 @@
 
       # broken upstream, thanks tauri
       # flight-core = pkgs.callPackage ./titanfall/flight-core.nix {};
+
+      mo2installer = pkgs.callPackage ./mo2installer {};
 
       modrinth-app = pkgs.callPackage ./modrinth-app {};
 
@@ -89,7 +91,8 @@
       };
 
       star-citizen = pkgs.callPackage ./star-citizen {
-        wine = config.packages.wine-ge;
+        wine = pkgs.wineWowPackages.staging;
+        winetricks = config.packages.winetricks-git;
         inherit (config.packages) umu;
       };
       star-citizen-umu = config.packages.star-citizen.override {useUmu = true;};
@@ -119,6 +122,8 @@
       wine-osu = wineBuilder "wine-osu" "base" {};
 
       wine-tkg = wineBuilder "wine-tkg" "full" {};
+
+      winetricks-git = pkgs.callPackage ./winetricks-git {inherit pins;};
 
       wineprefix-preparer = pkgs.callPackage ./wineprefix-preparer {inherit (config.packages) dxvk-w32 vkd3d-proton-w32 dxvk-w64 vkd3d-proton-w64;};
     };

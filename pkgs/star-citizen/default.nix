@@ -4,21 +4,22 @@
   symlinkJoin,
   writeShellScriptBin,
   gamemode,
+  gamescope,
   winetricks,
   wine,
   dxvk,
   umu,
   proton-ge-bin,
-  steamPackages,
   wineFlags ? "",
   pname ? "star-citizen",
   location ? "$HOME/Games/star-citizen",
-  tricks ? [],
+  tricks ? ["powershell" "corefonts" "tahoma"],
   useUmu ? false,
   protonPath ? "${proton-ge-bin.steamcompattool}/",
-  steamRuntime ? "${steamPackages.steam-runtime}/",
   protonVerbs ? ["waitforexitandrun"],
-  wineDllOverrides ? ["powershell.exe=n"],
+  wineDllOverrides ? [],
+  gameScopeEnable ? false,
+  gameScopeArgs ? [],
   preCommands ? "",
   postCommands ? "",
   enableGlCache ? true,
@@ -26,15 +27,15 @@
   pkgs,
 }: let
   inherit (lib.strings) concatStringsSep optionalString;
-  version = "1.6.10";
+  # Latest version can be found: https://install.robertsspaceindustries.com/rel/2/latest.yml
+  version = "2.0.5";
   src = pkgs.fetchurl {
-    url = "https://install.robertsspaceindustries.com/star-citizen/RSI-Setup-${version}.exe";
-    name = "RSI-Setup-${version}.exe";
-    hash = "sha256-axttJvw3MFmhLC4e+aqtf4qx0Z0x4vz78LElyGkMAbs=";
+    url = "https://install.robertsspaceindustries.com/rel/2/RSI%20Launcher-Setup-${version}.exe";
+    name = "RSI Launcher-Setup-${version}.exe";
+    hash = "sha256-NevMkWdXe3aKFUqBgI32nshp0qZ8c4nSJ1qdV3EGpGk=";
   };
 
   # Powershell stub for star-citizen
-  powershell-stub = pkgs.callPackage ./powershell-stub.nix {};
 
   # concat winetricks args
   tricksFmt =
@@ -42,38 +43,47 @@
     then concatStringsSep " " tricks
     else "-V";
 
+  gameScope = lib.strings.optionalString gameScopeEnable "${gamescope}/bin/gamescope ${concatStringsSep " " gameScopeArgs} --";
+
   script = writeShellScriptBin pname ''
+    export WINETRICKS_LATEST_VERSION_CHECK=disabled
     export WINEARCH="win64"
     export WINEPREFIX="${location}"
-    ${optionalString
+    ${
+      optionalString
       #this option doesn't work on umu, an umu TOML config file will be needed instead
-      (!useUmu) ''
+      (!useUmu)
+      ''
         export WINEFSYNC=1
         export WINEESYNC=1
         export WINEDLLOVERRIDES="${lib.strings.concatStringsSep "," wineDllOverrides}"
-      ''}
+        # Anti-cheat
+        export EOS_USE_ANTICHEATCLIENTNULL=1
+        # Nvidia tweaks
+        export WINE_HIDE_NVIDIA_GPU=1
+        # AMD
+        export dual_color_blend_by_location="true"
+
+      ''
+    }
     # ID for umu, not used for now
     export GAMEID="umu-starcitizen"
     export STORE="none"
-    # Anti-cheat
-    export EOS_USE_ANTICHEATCLIENTNULL=1
-    # Nvidia tweaks
-    export WINE_HIDE_NVIDIA_GPU=1
+
     export __GL_SHADER_DISK_CACHE=${
       if enableGlCache
       then "1"
       else "0"
     }
     export __GL_SHADER_DISK_CACHE_SIZE=${toString glCacheSize}
-    export WINE_HIDE_NVIDIA_GPU=1
-    # AMD
-    export dual_color_blend_by_location="true"
 
-    PATH=${lib.makeBinPath (
-      if useUmu
-      then [umu]
-      else [wine winetricks]
-    )}:$PATH
+    PATH=${
+      lib.makeBinPath (
+        if useUmu
+        then [umu]
+        else [wine winetricks]
+      )
+    }:$PATH
     USER="$(whoami)"
     RSI_LAUNCHER="$WINEPREFIX/drive_c/Program Files/Roberts Space Industries/RSI Launcher/RSI Launcher.exe"
     ${
@@ -81,7 +91,6 @@
       then ''
         export PROTON_VERBS="${concatStringsSep "," protonVerbs}"
         export PROTONPATH="${protonPath}"
-        export STEAM_RUNTIME_LIBRARY_PATH="${steamRuntime}"
         if [ ! -f "$RSI_LAUNCHER" ]; then umu-run "${src}" /S; fi
       ''
       else ''
@@ -108,16 +117,14 @@
     fi
     cd $WINEPREFIX
 
-    ${powershell-stub}/bin/install.sh
-
     ${preCommands}
     ${
       if useUmu
       then ''
-        ${gamemode}/bin/gamemoderun umu-run "$RSI_LAUNCHER" "$@"
+        ${gameScope} ${gamemode}/bin/gamemoderun umu-run "$RSI_LAUNCHER" "$@"
       ''
       else ''
-        ${gamemode}/bin/gamemoderun wine ${wineFlags} "$RSI_LAUNCHER" "$@"
+        ${gameScope} ${gamemode}/bin/gamemoderun wine ${wineFlags} "$RSI_LAUNCHER" "$@"
         wineserver -w
       ''
     }

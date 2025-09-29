@@ -6,6 +6,10 @@
   flake.nixosModules = let
     inherit (inputs.nixpkgs.lib) filter attrNames;
   in {
+    ntsync = throw ''
+      `modules.ntsync` has been superseded by `modules.wine`.
+    '';
+
     pipewireLowLatency = import ./pipewireLowLatency.nix;
 
     steamCompat = self.lib.mkDeprecated "warn" {} {
@@ -24,6 +28,8 @@
     };
 
     platformOptimizations = import ./platformOptimizations.nix;
+
+    wine = import ./wine.nix;
 
     default = throw ''
       The usage of default module is deprecated as multiple modules are provided by nix-gaming. Please use

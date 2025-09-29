@@ -21,14 +21,7 @@
         else null
       )
     else if stdenvNoCC.isLinux
-    then
-      (
-        if stdenvNoCC.isAarch64
-        then "linux-aarch64"
-        else if stdenvNoCC.isx86_64
-        then "linux"
-        else null
-      )
+    then "linux"
     else null;
 
   self = stdenvNoCC.mkDerivation rec {
@@ -55,12 +48,13 @@
       inherit pname;
       data = ./deps-ice.json;
       pkg = self;
+      useBwrap = false;
     };
     __darwinAllowLocalNetworking = true;
 
     gradleUpdateScript = ''
       runHook preBuild
-      for jfxPlatform in {mac,linux}{,-aarch64}; do
+      for jfxPlatform in {mac,mac-aarch64,linux}; do
         gradleFlags="-Pversion=${version} -PjavafxPlatform=$jfxPlatform"
         gradle nixDownloadDeps
         gradleFlags="-Pversion=${version} -PjavafxPlatform=$jfxPlatform -PjavafxClasspath=compileOnly"
@@ -73,6 +67,7 @@
       homepage = "https://github.com/FAForever/java-ice-adapter";
       license = with licenses; [mit];
       maintainers = with maintainers; [chayleaf];
+      platforms = platforms.darwin ++ ["x86_64-linux"];
     };
   };
 in

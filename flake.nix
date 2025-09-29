@@ -4,10 +4,6 @@
   inputs = {
     nixpkgs.url = "github:NixOS/nixpkgs/nixpkgs-unstable";
     flake-parts.url = "github:hercules-ci/flake-parts";
-    umu = {
-      url = "git+https://github.com/Open-Wine-Components/umu-launcher/?dir=packaging\/nix&submodules=1";
-      inputs.nixpkgs.follows = "nixpkgs";
-    };
   };
 
   outputs = {self, ...} @ inputs:
@@ -21,6 +17,8 @@
 
       perSystem = {pkgs, ...}: {
         formatter = pkgs.alejandra;
+        # Add to legacyPackages to prevent easyOverlay from including this package in the Overlay.
+        legacyPackages.npins = pkgs.callPackage (let pins = import ./npins; in pins.npins + "/npins.nix") {};
       };
     };
 

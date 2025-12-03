@@ -6,6 +6,7 @@
   makeWrapper,
   makeDesktopItem,
   openjdk21,
+  openjdk25,
   xorg,
   libGL,
   gtk3,
@@ -21,15 +22,15 @@
 }: let
   pname = "faf-client-bin";
 
-  versionStable = "2025.9.2";
-  sha256Stable = "OGEUBvVVlfRQy6HsAnUvOehadVeZlpgjBaSSHAvG+Fg=";
+  versionStable = "2025.11.2";
+  sha256Stable = "ta9cbIU23JQ5Lmmci8GxsyNPLb09pBXLBTnVMDD+XtQ=";
   srcStable = fetchzip {
     url = "https://github.com/FAForever/downlords-faf-client/releases/download/v${versionStable}/faf_unix_${builtins.replaceStrings ["."] ["_"] versionStable}.tar.gz";
     sha256 = sha256Stable;
   };
 
-  versionUnstable = "2025.9.3-alpha-1";
-  sha256Unstable = "JsfNzj/z/OXFZXVvoI/BN4Y55g6wZlG2WSjzSI5nEkU=";
+  versionUnstable = "2025.11.3-alpha-1";
+  sha256Unstable = "6icveoNMs5T5N+lFJj9hSgCca90k/Z0EBgpzrmkGvdo=";
   srcUnstable = fetchzip {
     url = "https://github.com/FAForever/downlords-faf-client/releases/download/v${versionUnstable}/faf_unix_${builtins.replaceStrings ["."] ["_"] versionUnstable}.tar.gz";
     sha256 = sha256Unstable;
@@ -95,7 +96,7 @@
     xorg.libXxf86vm
   ];
 in
-  stdenvNoCC.mkDerivation {
+  stdenvNoCC.mkDerivation rec {
     inherit pname meta desktopItem;
     version =
       if unstable
@@ -105,6 +106,11 @@ in
       if unstable
       then srcUnstable
       else srcStable;
+
+    openjdk =
+      if lib.versionAtLeast version "2025.9.3"
+      then openjdk25
+      else openjdk21;
 
     preferLocalBuild = true;
     nativeBuildInputs = [makeWrapper];
@@ -120,7 +126,7 @@ in
         --chdir $out/lib/faf-client \
         --set-default INSTALL4J_ADD_VM_PARAMS '~/.cache/openjfx' \
         --set-default LOG_DIR '~/.faforever/logs' \
-        --set INSTALL4J_JAVA_HOME ${openjdk21} \
+        --set INSTALL4J_JAVA_HOME ${openjdk} \
         --suffix PATH : ${lib.makeBinPath path} \
         --suffix LD_LIBRARY_PATH : ${lib.makeLibraryPath libs}
       sed -i "s#'~/.faforever/logs'#"'"$HOME/.faforever/logs"#' $out/bin/faf-client

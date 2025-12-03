@@ -60,7 +60,7 @@
   };
 
   pnameGen = n: n + lib.optionalString (build == "full") "-full";
-in rec {
+in {
   wine-cachyos =
     (callPackage "${nixpkgs-wine}/pkgs/applications/emulators/wine/base.nix" (lib.recursiveUpdate defaultsWow64 {
       pname = pnameGen "wine-cachyos";
@@ -98,14 +98,6 @@ in rec {
       version = lib.removeSuffix "\n" (lib.removePrefix "Wine version " (builtins.readFile ./wine-tkg/VERSION));
       src = pins.wine-tkg;
     });
-
-  wine-tkg-ntsync =
-    wine-tkg.override
-    {
-      pname = pnameGen "wine-tkg-ntsync";
-      version = lib.removeSuffix "\n" (lib.removePrefix "Wine version " (builtins.readFile ./wine-tkg-ntsync/VERSION));
-      src = pins.wine-tkg-ntsync;
-    };
 
   wine-osu = let
     pname = pnameGen "wine-osu";

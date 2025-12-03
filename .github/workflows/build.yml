@@ -14,12 +14,10 @@ jobs:
         package:
           - faf-client
           - faf-client-unstable
-          - proton-ge
           - wine-cachyos
           - wine-ge
           - wine-osu
           - wine-tkg
-          - wine-tkg-ntsync
           - wineprefix-preparer
           - umu-launcher
 

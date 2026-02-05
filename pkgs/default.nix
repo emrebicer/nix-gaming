@@ -12,51 +12,93 @@
     system,
     pkgs,
     ...
-  }: {
-    _module.args.pkgs = import inputs.nixpkgs {
-      inherit system;
-      config.allowUnfree = true;
+  }: let
+    deprecationNotices = {
+      umu = self.lib.mkDeprecated "warn" config.packages.umu-launcher-git {
+        name = "umu";
+        target = "package";
+        date = "2025-02-04";
+        instructions = ''
+          This package has been renamed to `umu-launcher-git` to differentiate
+          itself from the package in nixpkgs.
+        '';
+      };
+      umu-launcher = self.lib.mkDeprecated "warn" config.packages.umu-launcher-git {
+        name = "umu";
+        target = "package";
+        date = "2025-12-06";
+        instructions = ''
+          This package has been renamed to `umu-launcher-git` to differentiate
+          itself from the package in nixpkgs.
+        '';
+      };
+      umu-launcher-unwrapped = self.lib.mkDeprecated "warn" config.packages.umu-launcher-unwrapped-git {
+        name = "umu";
+        target = "package";
+        date = "2025-12-06";
+        instructions = ''
+          This package has been renamed to `umu-launcher-unwrapped-git` to differentiate
+          itself from the package in nixpkgs.
+        '';
+      };
     };
 
-    overlayAttrs = config.packages;
-
-    packages = let
+    packages' = let
       pins = builtins.mapAttrs (_: p: p {inherit pkgs;}) (import ../npins {});
 
       wine-mono = pkgs.callPackage ./wine-mono {};
 
       wineBuilder = wine: build: extra:
-        (import ./wine ({
-            inherit inputs self pkgs build pins wine-mono;
-            inherit (pkgs) callPackage fetchFromGitHub replaceVars lib moltenvk pkgsCross pkgsi686Linux stdenv wrapCCMulti overrideCC gcc13;
+        (import ./wine (
+          {
+            inherit
+              inputs
+              self
+              pkgs
+              build
+              pins
+              wine-mono
+              ;
+            inherit
+              (pkgs)
+              callPackage
+              fetchFromGitHub
+              replaceVars
+              lib
+              moltenvk
+              pkgsCross
+              pkgsi686Linux
+              stdenv
+              wrapCCMulti
+              overrideCC
+              gcc13
+              ;
             supportFlags = (import ./wine/supportFlags.nix).${build};
           }
-          // extra))
-        .${
+          // extra
+        )).${
           wine
         };
     in {
       inherit wine-mono;
 
-      umu = self.lib.mkDeprecated "warn" config.packages.umu-launcher {
-        name = "umu";
-        target = "package";
-        date = "2025-02-04";
-        instructions = ''
-          This package has been renamed to `umu-launcher` to
-          match the package name in nixpkgs.
-        '';
-      };
-      umu-launcher-unwrapped = pkgs.callPackage "${pins.umu-launcher}/packaging/nix/unwrapped.nix" {
-        inherit (pkgs) umu-launcher-unwrapped;
-        version = builtins.substring 0 7 pins.umu-launcher.revision;
-      };
-      umu-launcher = pkgs.callPackage "${pins.umu-launcher}/packaging/nix/package.nix" {
+      umu-launcher-unwrapped-git =
+        (pkgs.callPackage "${pins.umu-launcher}/packaging/nix/unwrapped.nix" {
+          inherit (pkgs) umu-launcher-unwrapped;
+          version = builtins.substring 0 7 pins.umu-launcher.revision;
+        }).overrideAttrs
+        {
+          # 2025-12-08: Tests and versionCheckHook are currently broken
+          doInstallCheck = false;
+        };
+      umu-launcher-git = pkgs.callPackage "${pins.umu-launcher}/packaging/nix/package.nix" {
         inherit (pkgs) umu-launcher;
-        inherit (config.packages) umu-launcher-unwrapped;
+        umu-launcher-unwrapped = config.packages.umu-launcher-unwrapped-git;
       };
 
       cnc-ddraw = pkgs.callPackage ./cnc-ddraw {};
+
+      d7vk-w32 = pkgs.pkgsCross.mingw32.callPackage ./d7vk {inherit pins;};
 
       dxvk = pkgs.callPackage ./dxvk {inherit pins;};
       dxvk-w32 = pkgs.pkgsCross.mingw32.callPackage ./dxvk {inherit pins;};
@@ -97,9 +139,11 @@
       };
 
       osu-stable = pkgs.callPackage ./osu-stable {
-        inherit (config.packages) osu-mime proton-osu-bin umu-launcher;
+        inherit (config.packages) osu-mime proton-osu-bin umu-launcher-git;
         wine = config.packages.wine-osu;
-        wine-discord-ipc-bridge = config.packages.wine-discord-ipc-bridge.override {wine = config.packages.wine-osu;};
+        wine-discord-ipc-bridge = config.packages.wine-discord-ipc-bridge.override {
+          wine = config.packages.wine-osu;
+        };
       };
 
       proton-ge = self.lib.mkDeprecated "warn" pkgs.emptyFile {
@@ -127,11 +171,13 @@
         inherit (config.packages) umu;
       };
 
+      rpc-bridge = pkgs.callPackage ./rpc-bridge {inherit pins;};
+
       star-citizen = pkgs.callPackage ./star-citizen {
         wine = config.packages.wine-tkg;
         winetricks = config.packages.winetricks-git;
 
-        inherit (config.packages) umu-launcher wineprefix-preparer;
+        inherit (config.packages) umu-launcher-git wineprefix-preparer;
       };
       star-citizen-umu = config.packages.star-citizen.override {useUmu = true;};
 
@@ -165,7 +211,28 @@
 
       winetricks-git = pkgs.callPackage ./winetricks-git {inherit pins;};
 
-      wineprefix-preparer = pkgs.callPackage ./wineprefix-preparer {inherit (config.packages) dxvk-w32 vkd3d-proton-w32 dxvk-w64 vkd3d-proton-w64 dxvk-nvapi-w32 dxvk-nvapi-w64 cnc-ddraw;};
+      wineprefix-preparer = pkgs.callPackage ./wineprefix-preparer {
+        inherit
+          (config.packages)
+          dxvk-w32
+          vkd3d-proton-w32
+          dxvk-w64
+          vkd3d-proton-w64
+          dxvk-nvapi-w32
+          dxvk-nvapi-w64
+          cnc-ddraw
+          d7vk-w32
+          ;
+      };
     };
+  in {
+    _module.args.pkgs = import inputs.nixpkgs {
+      inherit system;
+      config.allowUnfree = true;
+    };
+
+    overlayAttrs = packages';
+
+    packages = packages' // deprecationNotices;
   };
 }
